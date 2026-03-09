@@ -1,0 +1,73 @@
+{
+  "name": "meta-enricher",
+  "version": "1.0.0",
+  "description": "Photo library enrichment tool",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "build:server": "tsc",
+    "electron:dev": "electron .",
+    "build": "tsc && electron-builder",
+    "build:mac": "tsc && electron-builder --mac",
+    "build:win": "tsc && electron-builder --win",
+    "build:linux": "tsc && electron-builder --linux"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@hono/node-server": "^1.19.11",
+    "dotenv": "^17.3.1",
+    "exiftool-vendored": "^35.13.1",
+    "hono": "^4.12.5",
+    "sharp": "^0.34.5"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.5",
+    "@types/sharp": "^0.31.1",
+    "electron": "^36.9.5",
+    "electron-builder": "^25.1.8",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  },
+  "build": {
+    "appId": "com.dzarlax.meta-enricher",
+    "productName": "Meta Enricher",
+    "asar": true,
+    "asarUnpack": [
+      "node_modules/exiftool-vendored.exe/**",
+      "node_modules/exiftool-vendored.pl/**",
+      "node_modules/sharp/**"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "electron/**",
+      "dist/**",
+      "public/**",
+      "package.json",
+      "node_modules/**",
+      "!node_modules/**/.cache",
+      "!src/**",
+      "!.env"
+    ],
+    "afterSign": "electron/notarize.js",
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.photography",
+      "identity": "Developer ID Application",
+      "icon": "build/icon.icns"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "build/icon.png"
+    }
+  }
+}
