@@ -15,6 +15,15 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <DefineConstants>DISABLE_XAML_GENERATED_MAIN</DefineConstants>
   </PropertyGroup>
+  <!-- exiftool.exe must be placed next to this .csproj file.
+       Download the Windows standalone from https://exiftool.org
+       (rename "exiftool(-k).exe" to "exiftool.exe"). -->
+  <ItemGroup>
+    <Content Include="exiftool.exe" Condition="Exists('exiftool.exe')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.6.250228001" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1742" PrivateAssets="all" />

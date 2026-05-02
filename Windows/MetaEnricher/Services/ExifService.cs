@@ -128,20 +128,16 @@ public class ExifService
 
     public async Task WriteMetaAsync(string filePath, MetaWrite meta)
     {
-        var exifTool = FindExifTool();
-        if (exifTool == null)
-            throw new InvalidOperationException("exiftool.exe not found. Please install ExifTool and ensure it is in your PATH or app directory.");
+        var exifTool = FindExifTool()
+            ?? throw new InvalidOperationException(ExifToolMissingMessage());
 
-        var args = BuildExifToolArgs(filePath, meta);
-
-        await RunExifToolAsync(exifTool, args);
+        await RunExifToolAsync(exifTool, BuildExifToolArgs(filePath, meta));
     }
 
     public async Task RotateOrientationAsync(string filePath, bool clockwise)
     {
-        var exifTool = FindExifTool();
-        if (exifTool == null)
-            throw new InvalidOperationException("exiftool.exe not found.");
+        var exifTool = FindExifTool()
+            ?? throw new InvalidOperationException(ExifToolMissingMessage());
 
         // Read current orientation
         var meta = await ReadMetaAsync(filePath);
@@ -259,10 +255,12 @@ public class ExifService
 
     private string? FindExifTool()
     {
+        // 1. Next to the .exe (bundled with the app — preferred)
         var appDir = Path.GetDirectoryName(Environment.ProcessPath) ?? "";
         var local = Path.Combine(appDir, "exiftool.exe");
         if (File.Exists(local)) return local;
 
+        // 2. System PATH
         foreach (var dir in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(';'))
         {
             try
@@ -273,6 +271,17 @@ public class ExifService
             catch { }
         }
         return null;
+    }
+
+    public bool IsExifToolAvailable() => FindExifTool() != null;
+
+    private static string ExifToolMissingMessage()
+    {
+        var appDir = Path.GetDirectoryName(Environment.ProcessPath) ?? "(app dir)";
+        return $"exiftool.exe not found.\n\n" +
+               $"Download the Windows standalone executable from https://exiftool.org, " +
+               $"rename it from \"exiftool(-k).exe\" to \"exiftool.exe\", " +
+               $"and place it in:\n{appDir}";
     }
 
     private static string FormatShutter(double seconds)

@@ -36,6 +36,23 @@ public sealed partial class SettingsDialog : ContentDialog
     {
         await RefreshModels();
         await CheckOllamaStatus();
+        CheckExifToolStatus();
+    }
+
+    private void CheckExifToolStatus()
+    {
+        if (ExifService.Instance.IsExifToolAvailable())
+        {
+            ExifToolDot.Fill = new SolidColorBrush(Color.FromArgb(255, 34, 197, 94)); // green
+            TbExifToolStatus.Text = "exiftool.exe found — metadata writing enabled";
+        }
+        else
+        {
+            ExifToolDot.Fill = new SolidColorBrush(Color.FromArgb(255, 239, 68, 68)); // red
+            TbExifToolStatus.Text =
+                "exiftool.exe not found. Download the Windows standalone from exiftool.org, " +
+                "rename to exiftool.exe and place it next to MetaEnricher.exe.";
+        }
     }
 
     private async System.Threading.Tasks.Task RefreshModels()
