@@ -48,10 +48,25 @@ public partial class Photo : ObservableObject
 {
     public string Id { get; init; } = "";
     public string FilePath { get; init; } = "";
-    public PhotoMeta Meta { get; set; } = new();
-    public bool IsEnriched => Meta.Title != null && Meta.Description != null;
-    public bool HasPartialMeta => Meta.Title != null || Meta.Keywords.Count > 0;
     public string FileName => System.IO.Path.GetFileName(FilePath);
+
+    [ObservableProperty]
+    private PhotoMeta _meta = new();
+
+    // Notify dependent computed properties when Meta is replaced.
+    partial void OnMetaChanged(PhotoMeta value)
+    {
+        OnPropertyChanged(nameof(IsEnriched));
+        OnPropertyChanged(nameof(HasPartialMeta));
+    }
+
+    public bool IsEnriched =>
+        !string.IsNullOrWhiteSpace(Meta.Title) &&
+        !string.IsNullOrWhiteSpace(Meta.Description);
+
+    public bool HasPartialMeta =>
+        !string.IsNullOrWhiteSpace(Meta.Title) ||
+        Meta.Keywords.Count > 0;
 
     // Bound directly in ItemsRepeater DataTemplate — avoids TryGetElement(index) race.
     [ObservableProperty]

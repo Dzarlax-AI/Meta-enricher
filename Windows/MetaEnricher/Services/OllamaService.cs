@@ -209,10 +209,10 @@ public class OllamaService
             var root = doc.RootElement;
 
             if (fields.Contains(EnrichField.Title) && root.TryGetProperty("title", out var title))
-                meta.Title = title.GetString();
+                meta.Title = NullIfEmpty(title.GetString());
 
             if (fields.Contains(EnrichField.Description) && root.TryGetProperty("description", out var desc))
-                meta.Description = desc.GetString();
+                meta.Description = NullIfEmpty(desc.GetString());
 
             if (fields.Contains(EnrichField.Keywords) && root.TryGetProperty("keywords", out var kws))
             {
@@ -247,6 +247,9 @@ public class OllamaService
 
         return meta;
     }
+
+    private static string? NullIfEmpty(string? s) =>
+        string.IsNullOrWhiteSpace(s) ? null : s;
 
     private static async Task<byte[]> ResizeAndEncodeAsync(string filePath, int maxSize)
     {
