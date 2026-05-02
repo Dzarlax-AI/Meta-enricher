@@ -22,6 +22,11 @@
     <Content Include="exiftool.exe" Condition="Exists('exiftool.exe')">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <!-- exiftool_files/ contains the Perl runtime required by exiftool.exe -->
+    <Content Include="exiftool_files\**\*" Condition="Exists('exiftool_files')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>exiftool_files\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>
