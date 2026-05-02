@@ -16,6 +16,8 @@ public partial class AppState : ObservableObject
 
     private readonly PhotoScanner _scanner = new();
     private readonly string _settingsPath;
+    private readonly string _notesPath;
+    private Dictionary<string, string> _sessionNotesCache = new();
 
     [ObservableProperty]
     private bool _hasCompletedOnboarding;
@@ -93,7 +95,9 @@ public partial class AppState : ObservableObject
         var dir = Path.Combine(appData, "MetaEnricher");
         Directory.CreateDirectory(dir);
         _settingsPath = Path.Combine(dir, "settings.json");
+        _notesPath    = Path.Combine(dir, "session_notes.json");
         LoadSettings();
+        LoadSessionNotesCache();
         _initialized = true;
     }
 
@@ -119,9 +123,7 @@ public partial class AppState : ObservableObject
         SelectedPhoto = null;
         SelectedPhotoIds = new HashSet<string>();
 
-        // Load session notes
-        var notesKey = $"sessionNotes_{session.Id}";
-        SessionNotes = LoadSessionNotes(notesKey);
+        SessionNotes = _sessionNotesCache.TryGetValue(session.Id, out var notes) ? notes : "";
 
         try
         {
@@ -184,17 +186,28 @@ public partial class AppState : ObservableObject
 
     public void SaveSessionNotes(string sessionId, string notes)
     {
-        var key = $"sessionNotes_{sessionId}";
-        var notesDir = Path.GetDirectoryName(_settingsPath)!;
-        var notesFile = Path.Combine(notesDir, $"{key}.txt");
-        File.WriteAllText(notesFile, notes);
+        if (string.IsNullOrWhiteSpace(notes))
+            _sessionNotesCache.Remove(sessionId);
+        else
+            _sessionNotesCache[sessionId] = notes;
+
+        try
+        {
+            var json = JsonSerializer.Serialize(_sessionNotesCache, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(_notesPath, json);
+        }
+        catch { }
     }
 
-    private string LoadSessionNotes(string key)
+    private void LoadSessionNotesCache()
     {
-        var notesDir = Path.GetDirectoryName(_settingsPath)!;
-        var notesFile = Path.Combine(notesDir, $"{key}.txt");
-        return File.Exists(notesFile) ? File.ReadAllText(notesFile) : "";
+        if (!File.Exists(_notesPath)) return;
+        try
+        {
+            var json = File.ReadAllText(_notesPath);
+            _sessionNotesCache = JsonSerializer.Deserialize<Dictionary<string, string>>(json) ?? new();
+        }
+        catch { }
     }
 
     public void SaveSettings()
