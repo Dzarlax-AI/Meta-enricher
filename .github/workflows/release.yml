@@ -19,6 +19,24 @@ jobs:
         with:
           submodules: false
 
+      # Set Package.appxmanifest Identity/@Version from the git tag (v1.2.3 → 1.2.3.0)
+      # so the Store gets a unique version per submission. Falls back to 0.0.0.<run>
+      # for non-tag runs (manual dispatch) so we never reuse a Store version by accident.
+      - name: Update manifest version
+        shell: pwsh
+        run: |
+          $ref = "${{ github.ref_name }}"
+          if ($ref -match '^v(\d+)\.(\d+)\.(\d+)$') {
+            $ver = "$($Matches[1]).$($Matches[2]).$($Matches[3]).0"
+          } else {
+            $ver = "0.0.0.${{ github.run_number }}"
+          }
+          Write-Host "Setting manifest Version=$ver"
+          $manifest = "Windows/MetaEnricher/Package.appxmanifest"
+          $xml = [xml](Get-Content $manifest)
+          $xml.Package.Identity.Version = $ver
+          $xml.Save((Resolve-Path $manifest))
+
       - name: Setup .NET 9
         uses: actions/setup-dotnet@v4
         with:
