@@ -6,10 +6,9 @@
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
   IgnorableNamespaces="mp uap rescap">
 
-  <!-- Identity: fill in Publisher from Partner Center after creating the app listing -->
   <Identity
-    Name="MetaEnricher"
-    Publisher="CN=REPLACE_WITH_PARTNER_CENTER_PUBLISHER"
+    Name="Dzarlax.MetaEnricher"
+    Publisher="CN=C1047A08-2882-4611-85C9-52BB88270CC2"
     Version="1.0.0.0" />
 
   <mp:PhoneIdentity
@@ -18,7 +17,7 @@
 
   <Properties>
     <DisplayName>Meta Enricher</DisplayName>
-    <PublisherDisplayName>REPLACE_WITH_YOUR_NAME</PublisherDisplayName>
+    <PublisherDisplayName>Dzarlax</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
 
