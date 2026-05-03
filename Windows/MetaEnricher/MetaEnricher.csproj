@@ -16,7 +16,11 @@
     <WindowsPackageType Condition="'$(Configuration)' == 'Debug'">None</WindowsPackageType>
     <WindowsAppSDKSelfContained Condition="'$(Configuration)' == 'Debug'">true</WindowsAppSDKSelfContained>
     <RuntimeIdentifiers Condition="'$(Configuration)' == 'Debug'">win-x64;win-arm64</RuntimeIdentifiers>
-    <ApplicationManifest Condition="'$(Configuration)' == 'Debug'">app.manifest</ApplicationManifest>
+    <!-- ApplicationManifest must be set for both Debug and Release: in self-contained
+         unpackaged builds, Microsoft.WindowsAppSDK.targets uses it as the base into which
+         it injects WinRT activatable-class entries. Without those entries, the app crashes
+         at startup with combase + E_FAIL when COM tries to activate WinUI types. -->
+    <ApplicationManifest>app.manifest</ApplicationManifest>
     <GenerateAppxPackageOnBuild Condition="'$(Configuration)' == 'Release'">true</GenerateAppxPackageOnBuild>
     <AppxPackageSigningEnabled Condition="'$(Configuration)' == 'Release'">false</AppxPackageSigningEnabled>
     <UapAppxPackageBuildMode Condition="'$(Configuration)' == 'Release'">StoreUpload</UapAppxPackageBuildMode>
