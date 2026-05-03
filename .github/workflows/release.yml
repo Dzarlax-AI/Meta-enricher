@@ -41,44 +41,43 @@ jobs:
           Remove-Item exiftool.zip, exiftool_tmp -Recurse -Force
 
       # ── Portable build ────────────────────────────────────────────────────────
-      # Run msbuild from VS Developer environment so XAML compiler + PriGen DLL
-      # are properly available (same as Developer PowerShell on a dev machine).
+      # dotnet publish runs XAML compilation correctly. The only catch is that
+      # WinAppSDK's MrtCore.PriGen.targets looks up its task DLL via
+      # $(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\AppxPackage\
+      # which by default resolves to the .NET SDK dir (where the DLL doesn't exist).
+      # Override both vars to point at VS's MSBuild instead.
       - name: Build Portable (x64)
-        shell: cmd
+        shell: pwsh
+        env:
+          MSBuildExtensionsPath32: 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\'
+          VisualStudioVersion: '17.0'
         run: |
-          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\Tools\VsDevCmd.bat" -arch=x64 || exit /b 1
-          msbuild Windows\MetaEnricher\MetaEnricher.csproj ^
-            -t:Restore,Build ^
-            -p:Configuration=Release ^
-            -p:Platform=x64 ^
-            -p:RuntimeIdentifier=win-x64 ^
-            -p:SelfContained=true ^
-            -p:WindowsPackageType=None ^
-            -p:WindowsAppSDKSelfContained=true ^
-            -p:GenerateAppxPackageOnBuild=false || exit /b 1
+          dotnet publish Windows/MetaEnricher/MetaEnricher.csproj `
+            -c Release -r win-x64 --self-contained `
+            -p:Platform=x64 `
+            -p:WindowsPackageType=None `
+            -p:WindowsAppSDKSelfContained=true `
+            -p:GenerateAppxPackageOnBuild=false `
+            -p:PublishDir=publish-portable\
 
       - name: Zip Portable
         shell: pwsh
         run: |
-          $portableDir = "Windows/MetaEnricher/bin/x64/Release/net9.0-windows10.0.22621.0/win-x64"
-          if (-not (Test-Path $portableDir)) {
-            $portableDir = "Windows/MetaEnricher/bin/x64/Release/net9.0-windows10.0.22621.0"
-          }
-          Write-Host "Packaging from: $portableDir"
           Compress-Archive `
-            -Path "$portableDir/*" `
+            -Path Windows/MetaEnricher/publish-portable/* `
             -DestinationPath MetaEnricher-${{ github.ref_name }}-portable-x64.zip
 
       # ── MSIX build ────────────────────────────────────────────────────────────
       - name: Build Release (for MSIX)
-        shell: cmd
+        shell: pwsh
+        env:
+          MSBuildExtensionsPath32: 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\'
+          VisualStudioVersion: '17.0'
         run: |
-          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\Tools\VsDevCmd.bat" -arch=x64 || exit /b 1
-          msbuild Windows\MetaEnricher\MetaEnricher.csproj ^
-            -t:Restore,Build ^
-            -p:Configuration=Release ^
-            -p:Platform=x64 ^
-            -p:WindowsAppSDKSelfContained=false || exit /b 1
+          dotnet build Windows/MetaEnricher/MetaEnricher.csproj `
+            -c Release `
+            -p:Platform=x64 `
+            -p:WindowsAppSDKSelfContained=false
 
       - name: Create MSIX
         shell: pwsh
