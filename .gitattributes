@@ -1,0 +1,25 @@
+# Normalize line endings
+* text=auto
+
+# Swift / Xcode source — keep LF
+*.swift text eol=lf
+*.xcodeproj/* text eol=lf
+*.xcworkspace/* text eol=lf
+*.plist text eol=lf
+*.entitlements text eol=lf
+*.xcstrings text eol=lf
+
+# Windows source — keep CRLF
+*.cs text eol=crlf
+*.csproj text eol=crlf
+*.sln text eol=crlf
+*.xaml text eol=crlf
+*.appxmanifest text eol=crlf
+
+# Binaries
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pfx binary
