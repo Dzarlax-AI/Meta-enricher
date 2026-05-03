@@ -24,6 +24,36 @@ jobs:
         with:
           dotnet-version: '9.0.x'
 
+      # WinAppSDK's MrtCore.PriGen.targets imports a task DLL from
+      # $(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\AppxPackage\
+      # When dotnet runs, MSBuildExtensionsPath32 = the dotnet SDK dir, where the
+      # DLL isn't shipped. The DLL only ships with Visual Studio. Copy it across
+      # so dotnet can find it where it expects.
+      - name: Patch dotnet SDK with PriGen DLL from Visual Studio
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vsPath  = & $vswhere -latest -property installationPath
+          Write-Host "VS install: $vsPath"
+
+          $vsAppx = Get-ChildItem "$vsPath\MSBuild" -Filter AppxPackage -Recurse -Directory `
+            | Where-Object { Test-Path "$($_.FullName)\Microsoft.Build.Packaging.Pri.Tasks.dll" } `
+            | Select-Object -First 1
+          if (-not $vsAppx) { throw "AppxPackage folder with PriGen DLL not found in VS" }
+          $vsVerDir = $vsAppx.Parent.Name  # e.g. v17.0
+          Write-Host "VS AppxPackage: $($vsAppx.FullName) (version dir: $vsVerDir)"
+
+          $sdkVer  = (& dotnet --version).Trim()
+          $sdkBase = "C:\Program Files\dotnet\sdk\$sdkVer"
+          if (-not (Test-Path $sdkBase)) { throw "Active SDK not found at $sdkBase" }
+          Write-Host "Active SDK base: $sdkBase"
+
+          $target = Join-Path $sdkBase "Microsoft\VisualStudio\$vsVerDir\AppxPackage"
+          New-Item -ItemType Directory -Path $target -Force | Out-Null
+          Copy-Item "$($vsAppx.FullName)\*" $target -Force -Recurse
+          Write-Host "Copied DLLs to: $target"
+          Get-ChildItem $target | Select-Object Name
+
       # Download exiftool standalone exe from exiftool.org
       - name: Download exiftool
         shell: pwsh
@@ -41,16 +71,8 @@ jobs:
           Remove-Item exiftool.zip, exiftool_tmp -Recurse -Force
 
       # ── Portable build ────────────────────────────────────────────────────────
-      # dotnet publish runs XAML compilation correctly. The only catch is that
-      # WinAppSDK's MrtCore.PriGen.targets looks up its task DLL via
-      # $(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\AppxPackage\
-      # which by default resolves to the .NET SDK dir (where the DLL doesn't exist).
-      # Override both vars to point at VS's MSBuild instead.
       - name: Build Portable (x64)
         shell: pwsh
-        env:
-          MSBuildExtensionsPath32: 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\'
-          VisualStudioVersion: '17.0'
         run: |
           dotnet publish Windows/MetaEnricher/MetaEnricher.csproj `
             -c Release -r win-x64 --self-contained `
@@ -68,16 +90,15 @@ jobs:
             -DestinationPath MetaEnricher-${{ github.ref_name }}-portable-x64.zip
 
       # ── MSIX build ────────────────────────────────────────────────────────────
+      # Just compile — makeappx packs the output as MSIX manually below.
       - name: Build Release (for MSIX)
         shell: pwsh
-        env:
-          MSBuildExtensionsPath32: 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\'
-          VisualStudioVersion: '17.0'
         run: |
           dotnet build Windows/MetaEnricher/MetaEnricher.csproj `
             -c Release `
             -p:Platform=x64 `
-            -p:WindowsAppSDKSelfContained=false
+            -p:WindowsAppSDKSelfContained=false `
+            -p:GenerateAppxPackageOnBuild=false
 
       - name: Create MSIX
         shell: pwsh
