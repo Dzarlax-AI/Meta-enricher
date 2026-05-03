@@ -31,7 +31,7 @@ jobs:
       - name: Download exiftool
         shell: pwsh
         run: |
-          $ver = ([string](Invoke-RestMethod "https://exiftool.org/ver.txt")).Trim()
+          $ver = (Invoke-WebRequest "https://exiftool.org/ver.txt").Content.Trim()
           Invoke-WebRequest "https://exiftool.org/exiftool-$ver.zip" -OutFile exiftool.zip
           Expand-Archive exiftool.zip -DestinationPath exiftool_tmp
           $exe = Get-ChildItem exiftool_tmp -Filter "*.exe" | Select-Object -First 1
