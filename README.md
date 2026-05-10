@@ -52,9 +52,9 @@ You choose where the AI runs: **locally on your machine** for full privacy, or *
 Grab the latest release from [Releases](https://github.com/Dzarlax-AI/Meta-enricher/releases):
 
 - **`MetaEnricher-vX.Y.Z-portable-x64.zip`** — single-file portable .exe, no installer, just unzip and run
-- **`MetaEnricher-vX.Y.Z-x64.msix`** — installer package for system-wide install (requires importing the bundled certificate the first time, see the release notes)
+- **`MetaEnricher_X.Y.Z.0_x64_arm64.msixbundle`** — sideload bundle for x64 + ARM64 (requires importing the bundled certificate the first time, see the release notes)
 
-Microsoft Store version is in the works.
+Microsoft Store version is currently going through certification review.
 
 Requires Windows 10 (1809) or later.
 

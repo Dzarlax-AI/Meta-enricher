@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```
 Meta enricher/
 ├── macOS/      ← Native macOS app (Swift/SwiftUI), primary version
-├── Windows/    ← Future Windows version (not yet created)
+├── Windows/    ← WinUI 3 / Windows App SDK app, single-project MSIX
 ```
 
 ---
@@ -80,3 +80,35 @@ All settings via UI + UserDefaults (no env vars):
 - **EXIF write fails**: `ExifService` writes to temp file then atomic replace via `FileManager.replaceItemAt()`. If folder is read-only, the write will fail silently. Check folder permissions.
 - **Sandbox bookmark stale**: If camera root stops working after macOS update, re-select the folder via Settings. Stale bookmarks are auto-detected on resolve.
 - **exiftool fallback**: Batch metadata reads use exiftool at `/opt/homebrew/bin/exiftool` or `/usr/local/bin/exiftool`. Install via `brew install exiftool` if missing.
+
+---
+
+## Windows app (`Windows/MetaEnricher/`)
+
+Built with C# + WinUI 3 / Windows App SDK 1.6, .NET 9, single-project MSIX (no separate `.wapproj`). Targets Windows 10 1809+ (`TargetPlatformMinVersion 10.0.17763.0`). x64 + ARM64.
+
+### Build
+
+- **Debug** (`Configuration=Debug`): unpackaged self-contained `.exe` for fast iteration. F5 in Visual Studio works.
+- **Release / Store**: self-contained MSIX bundle with .NET 9 runtime baked in. Microsoft Store has no framework package for .NET Desktop Runtime, so framework-dependent builds crash at launch on cert lab machines.
+
+  Build via `Windows\build-msix.ps1` (dotnet publish for both archs → `makeappx bundle` → zip to `.msixupload`). The VS "Create App Packages" wizard is unreliable for self-contained single-project MSIX (fails with `0x80080203` missing AppxManifest.xml).
+
+### Configuration knobs in `MetaEnricher.csproj`
+
+- `SelfContained` / `WindowsAppSDKSelfContained` — `true` for Release.
+- `WindowsPackageType` — `None` for Debug (unpackaged), default MSIX for Release.
+- `EnableMsixTooling` — unconditionally `true`.
+- `IncludeAppxManifestInPublish` MSBuild target — copies `Package.appxmanifest` → `AppxManifest.xml` into publish output so MakeAppx finds it.
+
+### CI
+
+`.github/workflows/release.yml` builds two artifacts on tag `v*`:
+1. Portable single-file `.exe` (`-p:WindowsPackageType=None`, single-file).
+2. Store-ready `.msixbundle` + `.msixupload` (via `build-msix.ps1`).
+
+Manifest version is overwritten from the git tag (`v1.2.3` → `1.2.3.0`). Optional code signing via `WINDOWS_CERT` / `WINDOWS_CERT_PASSWORD` secrets.
+
+### exiftool
+
+`exiftool.exe` + `exiftool_files\` must sit next to `MetaEnricher.csproj`. CI downloads them automatically; locally, grab the standalone build from https://exiftool.org and drop them in.
