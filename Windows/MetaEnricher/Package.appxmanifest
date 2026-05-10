@@ -9,7 +9,7 @@
   <Identity
     Name="Dzarlax.MetaEnricher"
     Publisher="CN=C1047A08-2882-4611-85C9-52BB88270CC2"
-    Version="1.0.0.0" />
+    Version="1.0.2.0" />
 
   <mp:PhoneIdentity
     PhoneProductId="00000000-0000-0000-0000-000000000000"
@@ -22,7 +22,7 @@
   </Properties>
 
   <Dependencies>
-    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.22621.0" />
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26100.0" />
   </Dependencies>
 
   <Resources>

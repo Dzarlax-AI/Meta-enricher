@@ -107,34 +107,30 @@ jobs:
             -Path Windows/MetaEnricher/publish-portable/* `
             -DestinationPath MetaEnricher-${{ github.ref_name }}-portable-x64.zip
 
-      # ── MSIX build ────────────────────────────────────────────────────────────
-      # Just compile — makeappx packs the output as MSIX manually below.
-      - name: Build Release (for MSIX)
+      # ── MSIX build (Store-ready: self-contained .NET 9, x64 + ARM64 bundle) ───
+      # Microsoft Store has no framework package for the .NET Desktop Runtime, so
+      # framework-dependent MSIX builds crash at launch on clean test machines and
+      # fail certification (10.1.2.10 + 10.2.4.1). build-msix.ps1 handles publish
+      # for both architectures and bundles them into one .msixupload.
+      - name: Build MSIX bundle (x64 + ARM64, self-contained)
+        shell: pwsh
+        working-directory: Windows
+        run: .\build-msix.ps1
+
+      # Read the manifest version that the previous step baked in, so subsequent
+      # steps can reference the produced artifact filenames.
+      - name: Read package version
+        id: pkgver
         shell: pwsh
         run: |
-          dotnet build Windows/MetaEnricher/MetaEnricher.csproj `
-            -c Release `
-            -p:Platform=x64 `
-            -p:WindowsAppSDKSelfContained=false `
-            -p:GenerateAppxPackageOnBuild=false
+          $xml = [xml](Get-Content "Windows/MetaEnricher/Package.appxmanifest")
+          $v = $xml.Package.Identity.Version
+          "version=$v" >> $env:GITHUB_OUTPUT
 
-      - name: Create MSIX
-        shell: pwsh
-        run: |
-          $out = "Windows/MetaEnricher/bin/x64/Release/net9.0-windows10.0.22621.0"
-          $makeappx = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" `
-            -Recurse -Filter makeappx.exe |
-            Where-Object { $_.FullName -like "*x64*" } |
-            Sort-Object FullName -Descending |
-            Select-Object -First 1 -ExpandProperty FullName
-          Copy-Item Windows/MetaEnricher/Package.appxmanifest "$out/AppxManifest.xml" -Force
-          & $makeappx pack /d $out /p "MetaEnricher-${{ github.ref_name }}-x64.msix" /nv
-
-      # Sign MSIX — only runs if WINDOWS_CERT secret is set.
-      # To set up: generate a self-signed cert, export as base64 pfx, add to repo secrets:
-      #   WINDOWS_CERT  — base64-encoded .pfx file
-      #   WINDOWS_CERT_PASSWORD — pfx password
-      - name: Sign MSIX
+      # Sign the .msixbundle — only runs if WINDOWS_CERT secret is set. The Store
+      # re-signs uploaded packages with its own cert anyway, so signing is mainly
+      # useful for sideload testing of the same artifact.
+      - name: Sign MSIX bundle
         if: env.HAS_CERT == 'true'
         shell: pwsh
         run: |
@@ -146,7 +142,7 @@ jobs:
             Sort-Object FullName -Descending |
             Select-Object -First 1 -ExpandProperty FullName
           & $signtool sign /fd SHA256 /p "${{ secrets.WINDOWS_CERT_PASSWORD }}" /f $pfx `
-            "MetaEnricher-${{ github.ref_name }}-x64.msix"
+            "Windows/MetaEnricher_${{ steps.pkgver.outputs.version }}_x64_arm64.msixbundle"
 
       # ── Artifacts (always — downloadable from workflow run page) ──────────────
       - name: Upload artifacts
@@ -155,7 +151,8 @@ jobs:
           name: MetaEnricher-${{ github.ref_name }}
           path: |
             MetaEnricher-${{ github.ref_name }}-portable-x64.zip
-            MetaEnricher-${{ github.ref_name }}-x64.msix
+            Windows/MetaEnricher_${{ steps.pkgver.outputs.version }}_x64_arm64.msixbundle
+            Windows/MetaEnricher_${{ steps.pkgver.outputs.version }}_x64_arm64.msixupload
           if-no-files-found: error
 
       # ── GitHub Release (only on tag push) ─────────────────────────────────────
@@ -167,4 +164,5 @@ jobs:
           generate_release_notes: true
           files: |
             MetaEnricher-${{ github.ref_name }}-portable-x64.zip
-            MetaEnricher-${{ github.ref_name }}-x64.msix
+            Windows/MetaEnricher_${{ steps.pkgver.outputs.version }}_x64_arm64.msixbundle
+            Windows/MetaEnricher_${{ steps.pkgver.outputs.version }}_x64_arm64.msixupload

@@ -16,6 +16,13 @@
     <WindowsPackageType Condition="'$(Configuration)' == 'Debug'">None</WindowsPackageType>
     <WindowsAppSDKSelfContained Condition="'$(Configuration)' == 'Debug'">true</WindowsAppSDKSelfContained>
     <RuntimeIdentifiers Condition="'$(Configuration)' == 'Debug'">win-x64;win-arm64</RuntimeIdentifiers>
+    <!-- Release MSIX: bundle .NET 9 Desktop Runtime and WindowsAppSDK so the app runs
+         on stock Windows. Microsoft Store has no framework package for .NET Desktop Runtime,
+         so framework-dependent MSIX builds crash at launch on clean test machines
+         (Store cert 10.1.2.10 + 10.2.4.1). -->
+    <SelfContained Condition="'$(Configuration)' == 'Release'">true</SelfContained>
+    <WindowsAppSDKSelfContained Condition="'$(Configuration)' == 'Release'">true</WindowsAppSDKSelfContained>
+    <RuntimeIdentifiers Condition="'$(Configuration)' == 'Release'">win-x64;win-arm64</RuntimeIdentifiers>
     <!-- ApplicationManifest must be set for both Debug and Release: in self-contained
          unpackaged builds, Microsoft.WindowsAppSDK.targets uses it as the base into which
          it injects WinRT activatable-class entries. Without those entries, the app crashes
@@ -33,7 +40,18 @@
     <IncludeNativeLibrariesForSelfExtract Condition="'$(Configuration)' == 'Release' AND '$(WindowsPackageType)' == 'None'">true</IncludeNativeLibrariesForSelfExtract>
     <IncludeAllContentForSelfExtract Condition="'$(Configuration)' == 'Release' AND '$(WindowsPackageType)' == 'None'">true</IncludeAllContentForSelfExtract>
     <EnableCompressionInSingleFile Condition="'$(Configuration)' == 'Release' AND '$(WindowsPackageType)' == 'None'">true</EnableCompressionInSingleFile>
-    <EnableMsixTooling Condition="'$(Configuration)' == 'Release' AND '$(WindowsPackageType)' == 'None'">true</EnableMsixTooling>
+    <!-- Single-project MSIX: csproj produces the .msix directly, no separate .wapproj needed.
+         EnableMsixTooling exposes the "Publish → Create App Packages" UI on this project. -->
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <GenerateTemporaryStoreCertificate>True</GenerateTemporaryStoreCertificate>
+    <GenerateAppInstallerFile>False</GenerateAppInstallerFile>
+    <AppxPackageSigningTimestampDigestAlgorithm>SHA256</AppxPackageSigningTimestampDigestAlgorithm>
+    <AppxAutoIncrementPackageRevision>True</AppxAutoIncrementPackageRevision>
+    <GenerateTestArtifacts>True</GenerateTestArtifacts>
+    <HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
+    <!-- AppxBundle / AppxBundlePlatforms / AppxSymbolPackageEnabled are managed by
+         the "Create App Packages" wizard via the UI — don't hardcode them here, or
+         the wizard's pre-packaging step fails with 0x80080203 (missing AppxManifest.xml). -->
   </PropertyGroup>
   <!-- exiftool.exe must be placed next to this .csproj file.
        Download the Windows standalone from https://exiftool.org
@@ -63,9 +81,24 @@
        (Microsoft.UI.Xaml.dll + STATUS_STOWED_EXCEPTION 0xC000027B). -->
   <Target Name="IncludeAppPriInPublish" AfterTargets="ComputeFilesToPublish">
     <ItemGroup>
-      <ResolvedFileToPublish Include="$(OutputPath)$(AssemblyName).pri"
-                             Condition="Exists('$(OutputPath)$(AssemblyName).pri')">
+      <ResolvedFileToPublish Include="$(OutputPath)$(AssemblyName).pri" Condition="Exists('$(OutputPath)$(AssemblyName).pri')">
         <RelativePath>$(AssemblyName).pri</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+  </Target>
+
+  <!-- Workaround: the "Create App Packages" wizard runs `dotnet publish` for
+       self-contained MSIX builds, then invokes MakeAppx on the publish folder.
+       MakeAppx requires the manifest to be named AppxManifest.xml (not
+       Package.appxmanifest), so we copy it into the publish output during
+       publish. Without this, packaging fails with 0x80080203
+       "missing required footprint file". -->
+  <Target Name="IncludeAppxManifestInPublish" AfterTargets="ComputeFilesToPublish"
+          Condition="'$(WindowsPackageType)' != 'None' AND Exists('Package.appxmanifest')">
+    <ItemGroup>
+      <ResolvedFileToPublish Include="Package.appxmanifest">
+        <RelativePath>AppxManifest.xml</RelativePath>
         <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
       </ResolvedFileToPublish>
     </ItemGroup>
