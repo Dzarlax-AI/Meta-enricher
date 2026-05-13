@@ -16,30 +16,87 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="560" Padding="0,0,12,0">
         <StackPanel Spacing="16" Padding="4">
 
-            <!-- Source drive -->
-            <StackPanel Spacing="6">
-                <TextBlock Text="Source Drive" Foreground="#F5F5F5" FontSize="13" />
-                <Grid ColumnSpacing="8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <ComboBox
-                        x:Name="CbDrives"
-                        HorizontalAlignment="Stretch"
-                        Background="#2D2D2D"
-                        BorderBrush="#3A3A3A"
-                        Foreground="#F5F5F5"
-                        PlaceholderText="Select drive..."
-                        SelectionChanged="CbDrives_SelectionChanged" />
-                    <Button
-                        Grid.Column="1"
-                        Content="Scan"
-                        x:Name="BtnScan"
-                        Click="BtnScan_Click"
-                        Style="{StaticResource OutlineButtonStyle}"
-                        FontSize="12" />
-                </Grid>
+            <!-- Source -->
+            <StackPanel Spacing="8">
+                <TextBlock Text="Source" Foreground="#F5F5F5" FontSize="13" />
+
+                <SelectorBar
+                    x:Name="SourceModeSelector"
+                    SelectionChanged="SourceModeSelector_SelectionChanged">
+                    <SelectorBarItem x:Name="SbiCard"   Text="From camera card" />
+                    <SelectorBarItem x:Name="SbiFolder" Text="From folder" />
+                </SelectorBar>
+
+                <!-- Mode: camera card -->
+                <StackPanel x:Name="CardModePanel" Spacing="4">
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <ComboBox
+                            x:Name="CbDrives"
+                            HorizontalAlignment="Stretch"
+                            Background="#2D2D2D"
+                            BorderBrush="#3A3A3A"
+                            Foreground="#F5F5F5"
+                            PlaceholderText="Select drive..."
+                            SelectionChanged="CbDrives_SelectionChanged" />
+                        <Button
+                            Grid.Column="1"
+                            Content="Scan"
+                            x:Name="BtnScanCard"
+                            Click="BtnScan_Click"
+                            Style="{StaticResource OutlineButtonStyle}"
+                            FontSize="12" />
+                    </Grid>
+                    <TextBlock
+                        x:Name="TbCardHint"
+                        Foreground="#9CA3AF"
+                        FontSize="11"
+                        TextWrapping="Wrap"
+                        Text="Insert an SD card, phone, or camera. Looks for a DCIM folder on each removable drive." />
+                </StackPanel>
+
+                <!-- Mode: folder -->
+                <StackPanel x:Name="FolderModePanel" Spacing="4" Visibility="Collapsed">
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock
+                            x:Name="TbFolderPath"
+                            Foreground="#9CA3AF"
+                            FontSize="12"
+                            VerticalAlignment="Center"
+                            TextTrimming="CharacterEllipsis"
+                            Text="No folder selected" />
+                        <Button
+                            Grid.Column="1"
+                            Content="Choose…"
+                            x:Name="BtnBrowseSource"
+                            Click="BtnBrowseSource_Click"
+                            Background="Transparent"
+                            Foreground="#9CA3AF"
+                            BorderBrush="#3A3A3A"
+                            FontSize="12"
+                            Padding="10,6" />
+                        <Button
+                            Grid.Column="2"
+                            Content="Scan"
+                            x:Name="BtnScanFolder"
+                            Click="BtnScan_Click"
+                            Style="{StaticResource OutlineButtonStyle}"
+                            FontSize="12" />
+                    </Grid>
+                    <TextBlock
+                        Foreground="#9CA3AF"
+                        FontSize="11"
+                        TextWrapping="Wrap"
+                        Text="Pick a folder that already holds your photos (e.g. on this PC, a network share, or a phone mounted in File Explorer)." />
+                </StackPanel>
             </StackPanel>
 
             <!-- Destination -->

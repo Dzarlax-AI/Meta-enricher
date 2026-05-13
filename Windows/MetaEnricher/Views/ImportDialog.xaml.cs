@@ -18,6 +18,7 @@ public sealed partial class ImportDialog : ContentDialog
 
     private CancellationTokenSource? _cts;
     private string _destPath = "";
+    private string? _customSourcePath;
     private List<ImportItem> _newFiles = new();
     private readonly ObservableCollection<Photo> _previewPhotos = new();
 
@@ -34,11 +35,40 @@ public sealed partial class ImportDialog : ContentDialog
         CbDrives.Items.Clear();
         foreach (var d in drives)
             CbDrives.Items.Add(d);
+
         if (CbDrives.Items.Count > 0)
+        {
             CbDrives.SelectedIndex = 0;
+            SourceModeSelector.SelectedItem = SbiCard;
+        }
+        else
+        {
+            // No camera card connected — default to the folder mode so the dialog isn't a dead end.
+            SourceModeSelector.SelectedItem = SbiFolder;
+            TbCardHint.Text = "No camera card detected. Insert a card, or switch to “From folder”.";
+        }
+        ApplySourceMode();
 
         _destPath = AppState.CameraRootPath ?? "";
         TbDestPath.Text = string.IsNullOrEmpty(_destPath) ? "Not set" : _destPath;
+    }
+
+    private void SourceModeSelector_SelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs e)
+    {
+        ApplySourceMode();
+
+        // Switching mode invalidates any prior scan.
+        ScanSummaryPanel.Visibility = Visibility.Collapsed;
+        BtnImport.IsEnabled = false;
+        _newFiles.Clear();
+        _previewPhotos.Clear();
+    }
+
+    private void ApplySourceMode()
+    {
+        bool cardMode = SourceModeSelector.SelectedItem == SbiCard;
+        CardModePanel.Visibility = cardMode ? Visibility.Visible : Visibility.Collapsed;
+        FolderModePanel.Visibility = cardMode ? Visibility.Collapsed : Visibility.Visible;
     }
 
     private void CbDrives_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -50,23 +80,64 @@ public sealed partial class ImportDialog : ContentDialog
         _previewPhotos.Clear();
     }
 
+    private async void BtnBrowseSource_Click(object sender, RoutedEventArgs e)
+    {
+        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(App.CurrentWindow!);
+        var picker = new Windows.Storage.Pickers.FolderPicker();
+        picker.FileTypeFilter.Add("*");
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+        var folder = await picker.PickSingleFolderAsync();
+        if (folder == null) return;
+
+        _customSourcePath = folder.Path;
+        TbFolderPath.Text = _customSourcePath;
+
+        // Reset prior scan results
+        ScanSummaryPanel.Visibility = Visibility.Collapsed;
+        BtnImport.IsEnabled = false;
+        _newFiles.Clear();
+        _previewPhotos.Clear();
+    }
+
     private async void BtnScan_Click(object sender, RoutedEventArgs e)
     {
-        if (CbDrives.SelectedItem is not string drive) return;
-        if (string.IsNullOrEmpty(_destPath)) { ShowError("Set destination first."); return; }
+        string? scanPath;
+        if (SourceModeSelector.SelectedItem == SbiFolder)
+        {
+            if (string.IsNullOrEmpty(_customSourcePath))
+            {
+                ShowError("Pick a folder first.");
+                return;
+            }
+            // If user picked a parent that has a DCIM child, prefer the DCIM child.
+            var dcimChild = Path.Combine(_customSourcePath, "DCIM");
+            scanPath = Directory.Exists(dcimChild) ? dcimChild : _customSourcePath;
+        }
+        else
+        {
+            if (CbDrives.SelectedItem is not string drive)
+            {
+                ShowError("Select a drive first.");
+                return;
+            }
+            var dcimPath = Path.Combine(drive, "DCIM");
+            if (!Directory.Exists(dcimPath)) { ShowError("DCIM folder not found on selected drive."); return; }
+            scanPath = dcimPath;
+        }
 
-        var dcimPath = Path.Combine(drive, "DCIM");
-        if (!Directory.Exists(dcimPath)) { ShowError("DCIM folder not found on selected drive."); return; }
+        if (string.IsNullOrEmpty(_destPath)) { ShowError("Set destination first."); return; }
+        if (!Directory.Exists(scanPath)) { ShowError("Source folder does not exist."); return; }
 
         TbError.Visibility = Visibility.Collapsed;
         ScanSummaryPanel.Visibility = Visibility.Collapsed;
         ScanningPanel.Visibility = Visibility.Visible;
-        BtnScan.IsEnabled = false;
+        BtnScanCard.IsEnabled = false;
+        BtnScanFolder.IsEnabled = false;
         BtnImport.IsEnabled = false;
 
         try
         {
-            var result = await ImportService.Instance.ScanAsync(dcimPath, _destPath);
+            var result = await ImportService.Instance.ScanAsync(scanPath, _destPath);
 
             _newFiles = result.NewFiles;
 
@@ -103,7 +174,8 @@ public sealed partial class ImportDialog : ContentDialog
         finally
         {
             ScanningPanel.Visibility = Visibility.Collapsed;
-            BtnScan.IsEnabled = true;
+            BtnScanCard.IsEnabled = true;
+            BtnScanFolder.IsEnabled = true;
         }
     }
 
